@@ -1,0 +1,90 @@
+[
+  {
+    "json_name": "John Smith",
+    "json_age": "45",
+    "json_active": "true",
+    "json_rating": "4.5",
+    "json_totalBooks": "12",
+    "json_genres": "[\"Fiction\",\"Science\"]",
+    "json_scores": "[90,85,95]",
+    "json_wealth": "100000.50",
+    "json_followers": "1500"
+  },
+  {
+    "json_name": "Jane Doe",
+    "json_age": "32",
+    "json_active": "true",
+    "json_rating": "4.2",
+    "json_totalBooks": "8",
+    "json_genres": "[\"Romance\",\"Drama\"]",
+    "json_scores": "[88,92,78]",
+    "json_wealth": "75000.00",
+    "json_followers": "850"
+  },
+  {
+    "json_name": "Robert Johnson",
+    "json_age": "55",
+    "json_active": "false",
+    "json_rating": "3.8",
+    "json_totalBooks": "25",
+    "json_genres": "[\"History\",\"Biography\"]",
+    "json_scores": "[75,80,85]",
+    "json_wealth": "250000.75",
+    "json_followers": "3200"
+  },
+  {
+    "json_name": "Emily Wilson",
+    "json_age": "28",
+    "json_active": "true",
+    "json_rating": "4.7",
+    "json_totalBooks": "5",
+    "json_genres": "[\"Fantasy\",\"Young Adult\"]",
+    "json_scores": "[95,98,92]",
+    "json_wealth": "50000.25",
+    "json_followers": "600"
+  },
+  {
+    "json_name": "Michael Brown",
+    "json_age": "62",
+    "json_active": "true",
+    "json_rating": "",
+    "json_totalBooks": "18",
+    "json_genres": "[\"Mystery\",\"Thriller\"]",
+    "json_scores": "[82,88,90]",
+    "json_wealth": "180000.00",
+    "json_followers": "2100"
+  },
+  {
+    "json_name": "Sarah Davis",
+    "json_age": "39",
+    "json_active": "false",
+    "json_rating": "3.5",
+    "json_totalBooks": "3",
+    "json_genres": "[\"Poetry\",\"Short Stories\"]",
+    "json_scores": "[70,65,75]",
+    "json_wealth": "45000.50",
+    "json_followers": "350"
+  },
+  {
+    "json_name": "David Lee",
+    "json_age": "48",
+    "json_active": "true",
+    "json_rating": "4.0",
+    "json_totalBooks": "15",
+    "json_genres": "[\"Science Fiction\",\"Adventure\"]",
+    "json_scores": "[85,90,88]",
+    "json_wealth": "120000.00",
+    "json_followers": "1800"
+  },
+  {
+    "json_name": "Unknown",
+    "json_age": "",
+    "json_active": "true",
+    "json_rating": "4.1",
+    "json_totalBooks": "10",
+    "json_genres": "[\"Fiction\"]",
+    "json_scores": "[80,85,90]",
+    "json_wealth": "95000.00",
+    "json_followers": "1250"
+  }
+]

@@ -9,29 +9,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Hooks {
-    private final TestContext context;
+    private TestContext context;
     private static final Logger logger = LoggerFactory.getLogger(Hooks.class);
 
     public Hooks() {
-        // Default constructor required by Cucumber
-        this.context = new TestContext();
+        // Context will be initialized in setUp with the proper environment
     }
 
     @Before
     public void setUp(Scenario scenario) {
-        // Initialize any required resources
-        logger.info("Starting scenario: {}", scenario.getName());
+        String environment = System.getProperty("env", "dev");
+        this.context = new TestContext(environment);
+
+        String scenarioName = scenario.getName();
+        logger.info("Starting scenario: {} in {} environment", scenarioName, environment);
         context.reset();
+        context.setData("scenario_name", scenarioName);
     }
 
     @After
     public void tearDown(Scenario scenario) {
+        String scenarioName = scenario.getName();
         if (scenario.isFailed()) {
-            logger.error("Scenario failed: {}", scenario.getName());
+            logger.error("Scenario failed: {}", scenarioName);
             attachRequestResponseToAllure();
+            attachScenarioDataToAllure();
         } else {
-            logger.info("Scenario passed: {}", scenario.getName());
+            logger.info("Scenario passed: {}", scenarioName);
         }
+
+        // Generate performance report for the scenario
+        context.getPerformanceMonitor().generateReport().printReport();
+
         context.getRestClient().close();
     }
 
@@ -41,13 +50,32 @@ public class Hooks {
 
     private void attachRequestResponseToAllure() {
         try {
-            String request = context.getPathExtractor().getValue("last_request").toString();
-            String response = context.getPathExtractor().getValue("response").toString();
+            String request = context.getPathExtractor().getValue("last_request") != null ?
+                    context.getPathExtractor().getValue("last_request").toString() : "No request captured";
+            String response = context.getPathExtractor().getValue("last_response") != null ?
+                    context.getPathExtractor().getValue("last_response").toString() : "No response captured";
 
-            Allure.addAttachment("Request", "application/json", request);
-            Allure.addAttachment("Response", "application/json", response);
+            Allure.addAttachment("Request", "text/plain", request);
+            Allure.addAttachment("Response", "text/plain", response);
         } catch (Exception e) {
             logger.warn("Failed to attach request/response to Allure", e);
+        }
+    }
+
+    private void attachScenarioDataToAllure() {
+        try {
+            StringBuilder data = new StringBuilder();
+            data.append("Extracted Values:\n");
+            context.getPathExtractor().getAllValues().forEach((key, value) ->
+                    data.append(key).append(": ").append(value).append("\n"));
+
+            data.append("\nScenario Data:\n");
+            context.getPathExtractor().getAllValues().forEach((key, value) ->
+                    data.append(key).append(": ").append(value).append("\n"));
+
+            Allure.addAttachment("Scenario Data", "text/plain", data.toString());
+        } catch (Exception e) {
+            logger.warn("Failed to attach scenario data to Allure", e);
         }
     }
 }

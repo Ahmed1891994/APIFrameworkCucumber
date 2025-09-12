@@ -1,0 +1,9 @@
+csv_name,csv_age,csv_active,csv_rating,csv_totalBooks,csv_genres,csv_scores,csv_wealth,csv_followers
+John Smith,45,true,4.5,12,"[""Fiction"",""Science""]","[90,85,95]",100000.50,1500
+Jane Doe,32,true,4.2,8,"[""Romance"",""Drama""]","[88,92,78]",75000.00,850
+Robert Johnson,55,false,3.8,25,"[""History"",""Biography""]","[75,80,85]",250000.75,3200
+Emily Wilson,28,true,4.7,5,"[""Fantasy"",""Young Adult""]","[95,98,92]",50000.25,600
+Michael Brown,62,true,,18,"[""Mystery"",""Thriller""]","[82,88,90]",180000.00,2100
+Sarah Davis,39,false,3.5,3,"[""Poetry"",""Short Stories""]","[70,65,75]",45000.50,350
+David Lee,48,true,4.0,15,"[""Science Fiction"",""Adventure""]","[85,90,88]",120000.00,1800
+Unknown, ,true,4.1,10,"[""Fiction""]","[80,85,90]",95000.00,1250

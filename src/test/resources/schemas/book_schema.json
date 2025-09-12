@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BookEntity",
+  "type": "object",
+  "properties": {
+    "isbn": { "type": "string" },
+    "title": { "type": "string" },
+    "published": { "type": "boolean" },
+    "pages": { "type": "integer" },
+    "price": { "type": "string", "pattern": "^-?\\d+(\\.\\d+)?$" },
+    "author": { "$ref": "author_schema.json"},
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ratings": {
+      "type": "array",
+      "items": { "type": "number" }
+    }
+  },
+  "required": ["isbn", "title", "published", "pages", "price", "author"]
+}

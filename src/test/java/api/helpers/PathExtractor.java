@@ -1,23 +1,46 @@
 package api.helpers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.PathNotFoundException;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class PathExtractor {
-    private final ObjectMapper objectMapper;
-    private Map<String, Object> extractedValues;
+    private final Map<String, Object> extractedValues = new HashMap<>();
+    private final Configuration jacksonConfig;
 
     public PathExtractor() {
-        this.objectMapper = new ObjectMapper();
-        this.extractedValues = new HashMap<>();
+        ObjectMapper objectMapper = new ObjectMapper();
+        this.jacksonConfig = Configuration.builder()
+                .jsonProvider(new com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider(objectMapper))
+                .mappingProvider(new com.jayway.jsonpath.spi.mapper.JacksonMappingProvider(objectMapper))
+                .options(Option.SUPPRESS_EXCEPTIONS)
+                .build();
     }
 
     public void extractValue(String response, String jsonPath, String key) {
-        Object value = JsonPath.read(response, jsonPath);
-        extractedValues.put(key, value);
+        try {
+            JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
+            extractedValues.put(key, convertJsonNode(result));
+        } catch (PathNotFoundException e) {
+            throw new RuntimeException("JSON path '" + jsonPath + "' not found in response", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract value from path: " + jsonPath, e);
+        }
+    }
+
+    private Object convertJsonNode(JsonNode node) {
+        if (node == null || node.isNull()) return null;
+        if (node.isTextual()) return node.textValue();
+        if (node.isNumber()) return node.numberValue();
+        if (node.isBoolean()) return node.booleanValue();
+        if (node.isArray() || node.isObject()) return node.toString();
+        return node.asText();
     }
 
     public void storeValue(String key, Object value) {
@@ -28,8 +51,14 @@ public class PathExtractor {
         return extractedValues.get(key);
     }
 
+    public boolean hasValue(String key) {
+        return extractedValues.containsKey(key);
+    }
+
     public String buildUrl(String baseUrl, String endpoint, Map<String, String> pathParams) {
         String finalEndpoint = endpoint;
+
+        // First use explicit path parameters
         if (pathParams != null) {
             for (Map.Entry<String, String> entry : pathParams.entrySet()) {
                 String paramValue = entry.getValue();
@@ -39,10 +68,58 @@ public class PathExtractor {
                 finalEndpoint = finalEndpoint.replace("{" + entry.getKey() + "}", paramValue);
             }
         }
+
+        for (Map.Entry<String, Object> entry : extractedValues.entrySet()) {
+            String placeholder = "{" + entry.getKey() + "}";
+            if (finalEndpoint.contains(placeholder) && entry.getValue() != null) {
+                finalEndpoint = finalEndpoint.replace(placeholder, entry.getValue().toString());
+            }
+        }
+
         return baseUrl + finalEndpoint;
     }
 
     public void clear() {
         extractedValues.clear();
+    }
+
+    public Map<String, Object> getAllValues() {
+        return new HashMap<>(extractedValues);
+    }
+
+    public Object readJsonPath(String response, String jsonPath) {
+        try {
+            JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
+            return convertJsonNode(result);
+        } catch (PathNotFoundException e) {
+            return null;
+        }
+    }
+
+    public boolean existsJsonPath(String json, String jsonPath) {
+        try {
+            // Try to read the path - if it doesn't throw an exception, the path exists
+            JsonPath.using(jacksonConfig).parse(json).read(jsonPath);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public Configuration getJacksonConfig() {
+        return jacksonConfig;
+    }
+
+    public String resolvePlaceholders(String text) {
+        if (text == null) return null;
+
+        String result = text;
+        for (Map.Entry<String, Object> entry : extractedValues.entrySet()) {
+            Object value = entry.getValue();
+            if (value != null) {
+                result = result.replace("${" + entry.getKey() + "}", value.toString());
+            }
+        }
+        return result;
     }
 }

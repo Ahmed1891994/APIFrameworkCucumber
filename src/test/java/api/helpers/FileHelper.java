@@ -1,5 +1,7 @@
 package api.helpers;
 
+import api.exceptions.ResponseNotAvailableException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -21,24 +23,28 @@ public class FileHelper {
         this.pathExtractor = pathExtractor;
     }
 
-    public void saveResponseToFile(String filename, boolean append) throws IOException {
+    public void saveResponseToFile(String filename, boolean append) {
         String response = (String) pathExtractor.getValue("response");
         if (response == null) {
-            throw new IOException("No response available to save");
+            throw new ResponseNotAvailableException("No response available to save");
         }
 
+        JsonNode newJsonNode;
         try {
-            JsonNode newJsonNode = objectMapper.readTree(response);
-            Path path = Paths.get(filename);
+            newJsonNode = objectMapper.readTree(response);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        Path path = Paths.get(filename);
 
-            if (append && Files.exists(path)) {
+        if (append && Files.exists(path)) {
+            try {
                 appendToJsonArray(path, newJsonNode);
-            } else {
-                createNewJsonArray(path, newJsonNode);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-
-        } catch (Exception e) {
-            throw new IOException("Failed to save response to file: " + filename, e);
+        } else {
+            createNewJsonArray(path, newJsonNode);
         }
     }
 
@@ -59,10 +65,19 @@ public class FileHelper {
         Files.write(path, beautifiedArray.getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
     }
 
-    private void createNewJsonArray(Path path, JsonNode newJsonNode) throws IOException {
+    private void createNewJsonArray(Path path, JsonNode newJsonNode) {
         ArrayNode arrayNode = objectMapper.createArrayNode();
         arrayNode.add(newJsonNode);
-        String content = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(arrayNode);
-        Files.write(path, content.getBytes());
+        String content;
+        try {
+            content = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(arrayNode);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            Files.write(path, content.getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

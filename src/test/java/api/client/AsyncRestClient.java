@@ -1,14 +1,16 @@
 package api.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.hc.client5.http.async.methods.*;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.concurrent.FutureCallback;
-import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.util.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URISyntaxException;
 import java.util.*;
@@ -48,7 +50,7 @@ public class AsyncRestClient {
         this.client = customClient;
         this.client.start();
         this.defaultHeaders = new HashMap<>();
-        logger.debug("AsyncRestClient initialized with default headers: {}", defaultHeaders);
+        logger.info("AsyncRestClient initialized with default headers: {}", defaultHeaders);
     }
 
     public void setBaseUrl(String baseUrl) {
@@ -57,7 +59,7 @@ public class AsyncRestClient {
     }
 
     public void addHeader(String key, String value) {
-        logger.debug("Adding header: {} = {}", key, value);
+        logger.info("Adding header: {} = {}", key, value);
         this.defaultHeaders.put(key, value);
     }
 
@@ -121,7 +123,7 @@ public class AsyncRestClient {
 
 
         if (body == null || Objects.requireNonNull(body).isEmpty()) {
-            logger.debug("Request body: {}", body);
+            logger.info("Request body: {}", body);
         }
 
         // Store the request
@@ -130,10 +132,8 @@ public class AsyncRestClient {
         CompletableFuture<SimpleHttpResponse> responseFuture = new CompletableFuture<>();
 
         logger.info("🚀 Sending {} request to: {}", method, url);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Request body: {}", body);
-            logger.debug("Request headers: {}", finalHeaders);
-        }
+        logger.info("Request body: {}", body);
+        logger.info("Request headers: {}", finalHeaders);
 
         // Execute with retry logic
         executeWithRetry(request, responseFuture, maxRetries, 0);
@@ -148,9 +148,7 @@ public class AsyncRestClient {
                     @Override
                     public void completed(SimpleHttpResponse result) {
                         logger.info("✅ Request completed with status: {}", result.getCode());
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Response body: {}", result.getBodyText());
-                        }
+                        logger.info("Response body: {}", result.getBodyText());
 
                         // Store the response
                         lastResponse = result;

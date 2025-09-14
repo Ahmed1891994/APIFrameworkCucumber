@@ -35,7 +35,7 @@ public class SchemaValidator {
         logger.info("Validating response against schema: {}", schemaName);
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Response body to validate: {}", json);
+            logger.info("Response body to validate: {}", json);
         }
 
         String schemaPath = "schemas/" + schemaName + ".json"; // always classpath
@@ -45,14 +45,14 @@ public class SchemaValidator {
         Set<ValidationMessage> errors = schema.validate(jsonNode);
         if (!errors.isEmpty()) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Schema validation found {} errors", errors.size());
+                logger.info("Schema validation found {} errors", errors.size());
             }
 
             StringBuilder errorMessage = new StringBuilder("Schema validation failed:\n");
             for (ValidationMessage error : errors) {
                 errorMessage.append(error.getMessage()).append("\n");
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Validation error: {}", error.getMessage());
+                    logger.info("Validation error: {}", error.getMessage());
                 }
             }
             throw new AssertionError(errorMessage.toString());
@@ -68,7 +68,7 @@ public class SchemaValidator {
         logger.info("Validating response against classpath schema: {}", classpathSchema);
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Response body to validate: {}", json);
+            logger.info("Response body to validate: {}", json);
         }
 
         if (!classpathSchema.endsWith(".json")) {
@@ -82,14 +82,14 @@ public class SchemaValidator {
         Set<ValidationMessage> errors = schema.validate(jsonNode);
         if (!errors.isEmpty()) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Schema validation found {} errors", errors.size());
+                logger.info("Schema validation found {} errors", errors.size());
             }
 
             StringBuilder errorMessage = new StringBuilder("Schema validation failed:\n");
             for (ValidationMessage error : errors) {
                 errorMessage.append(error.getMessage()).append("\n");
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Validation error: {}", error.getMessage());
+                    logger.info("Validation error: {}", error.getMessage());
                 }
             }
             throw new AssertionError(errorMessage.toString());
@@ -104,7 +104,7 @@ public class SchemaValidator {
     private JsonSchema loadSchemaFromClasspath(String classpathSchema) {
         return schemaCache.computeIfAbsent(classpathSchema, path -> {
             if (logger.isDebugEnabled()) {
-                logger.debug("Loading schema from classpath: {}", path);
+                logger.info("Loading schema from classpath: {}", path);
             }
 
             try (InputStream schemaStream = getClass().getClassLoader().getResourceAsStream(path)) {
@@ -118,7 +118,7 @@ public class SchemaValidator {
                 JsonSchema schema = schemaFactory.getSchema(schemaNode);
 
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Successfully loaded and parsed schema: {}", path);
+                    logger.info("Successfully loaded and parsed schema: {}", path);
                 }
 
                 return schema;

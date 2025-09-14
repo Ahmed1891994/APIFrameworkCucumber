@@ -6,6 +6,8 @@ import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.PathNotFoundException;
+import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +21,8 @@ public class PathExtractor {
     public PathExtractor() {
         objectMapper = new ObjectMapper();
         this.jacksonConfig = Configuration.builder()
-                .jsonProvider(new com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider(objectMapper))
-                .mappingProvider(new com.jayway.jsonpath.spi.mapper.JacksonMappingProvider(objectMapper))
+                .jsonProvider(new JacksonJsonNodeJsonProvider(objectMapper))
+                .mappingProvider(new JacksonMappingProvider(objectMapper))
                 .options(Option.SUPPRESS_EXCEPTIONS)
                 .build();
     }
@@ -28,7 +30,7 @@ public class PathExtractor {
     public void extractValue(String response, String jsonPath, String key) {
         try {
             JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
-            extractedValues.put(key, convertJsonNode(result));
+            extractedValues.put(key, result);
         } catch (PathNotFoundException e) {
             throw new RuntimeException("JSON path '" + jsonPath + "' not found in response", e);
         } catch (Exception e) {
@@ -60,7 +62,6 @@ public class PathExtractor {
     public String buildUrl(String baseUrl, String endpoint, Map<String, String> pathParams) {
         String finalEndpoint = endpoint;
 
-        // First use explicit path parameters
         if (pathParams != null) {
             for (Map.Entry<String, String> entry : pathParams.entrySet()) {
                 String paramValue = entry.getValue();

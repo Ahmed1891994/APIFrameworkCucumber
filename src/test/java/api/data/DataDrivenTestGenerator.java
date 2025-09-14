@@ -31,7 +31,7 @@ public class DataDrivenTestGenerator {
 
     public List<Map<String, String>> loadTestData(String source) {
         if (debugMode) {
-            logger.debug("Loading test data from: {}", source);
+            logger.info("Loading test data from: {}", source);
         }
 
         // Remove any prefix and detect format by extension
@@ -54,7 +54,7 @@ public class DataDrivenTestGenerator {
 
     private List<Map<String, String>> loadFromClasspath(String path) {
         if (debugMode) {
-            logger.debug("Loading from classpath: {}", path);
+            logger.info("Loading from classpath: {}", path);
         }
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
@@ -76,7 +76,7 @@ public class DataDrivenTestGenerator {
 
     private List<Map<String, String>> loadFromCsv(String path) {
         if (debugMode) {
-            logger.debug("Loading CSV from: {}", path);
+            logger.info("Loading CSV from: {}", path);
         }
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
@@ -91,7 +91,7 @@ public class DataDrivenTestGenerator {
 
     private List<Map<String, String>> loadFromJson(String path) {
         if (debugMode) {
-            logger.debug("Loading JSON from: {}", path);
+            logger.info("Loading JSON from: {}", path);
         }
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
@@ -116,12 +116,12 @@ public class DataDrivenTestGenerator {
             List<String[]> allData = csvReader.readAll();
 
             if (debugMode) {
-                logger.debug("Raw CSV data: {}", Arrays.deepToString(allData.toArray()));
+                logger.info("Raw CSV data: {}", Arrays.deepToString(allData.toArray()));
             }
 
             if (allData.isEmpty()) {
                 if (debugMode) {
-                    logger.debug("CSV file is empty");
+                    logger.info("CSV file is empty");
                 }
                 return result;
             }
@@ -129,7 +129,7 @@ public class DataDrivenTestGenerator {
             // First row is headers
             String[] headers = allData.get(0);
             if (debugMode) {
-                logger.debug("Headers: {}", Arrays.toString(headers));
+                logger.info("Headers: {}", Arrays.toString(headers));
             }
 
             // Process data rows
@@ -137,7 +137,7 @@ public class DataDrivenTestGenerator {
                 String[] row = allData.get(i);
 
                 if (debugMode) {
-                    logger.debug("Row {}: {}", i, Arrays.toString(row));
+                    logger.info("Row {}: {}", i, Arrays.toString(row));
                 }
 
                 // Check if the row has the correct number of columns
@@ -160,7 +160,7 @@ public class DataDrivenTestGenerator {
                 result.add(rowMap);
 
                 if (debugMode) {
-                    logger.debug("Row {} parsed: {}", i, rowMap);
+                    logger.info("Row {} parsed: {}", i, rowMap);
                 }
             }
         }
@@ -168,7 +168,7 @@ public class DataDrivenTestGenerator {
         logger.info("Successfully parsed {} rows from CSV", result.size());
 
         if (debugMode && !result.isEmpty()) {
-            logger.debug("Final parsed data: {}", result);
+            logger.info("Final parsed data: {}", result);
         }
 
         return result;
@@ -176,13 +176,13 @@ public class DataDrivenTestGenerator {
 
     private List<Map<String, String>> loadJsonFromStream(InputStream is) throws IOException {
         if (debugMode) {
-            logger.debug("Loading JSON from stream");
+            logger.info("Loading JSON from stream");
         }
 
         List<Map<String, String>> result = objectMapper.readValue(is, new TypeReference<List<Map<String, String>>>() {});
 
         if (debugMode) {
-            logger.debug("Successfully parsed {} rows from JSON: {}", result.size(), result);
+            logger.info("Successfully parsed {} rows from JSON: {}", result.size(), result);
         }
 
         return result;
@@ -190,7 +190,7 @@ public class DataDrivenTestGenerator {
 
     private List<Map<String, String>> loadFromFile(String path) {
         if (debugMode) {
-            logger.debug("Loading from file: {}", path);
+            logger.info("Loading from file: {}", path);
         }
 
         try {

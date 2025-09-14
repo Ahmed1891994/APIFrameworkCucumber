@@ -37,7 +37,7 @@ public class ApiConfig {
 
     private void initializeLogging() {
         boolean debugMode = Boolean.parseBoolean(properties.getProperty("logging.debug", "false"));
-        LoggerConfig.initialize(debugMode);
+//        LoggerConfig.initialize(debugMode);
     }
 
     public String getBaseUrl() {

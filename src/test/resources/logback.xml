@@ -1,18 +1,15 @@
-<configuration>
-    <property name="LOG_DIR" value="logss"/>
+<configuration debug="false">
+    <property name="LOG_DIR" value="logs"/>
     <property name="LOG_FILE" value="app"/>
 
-    <!-- Create LOG_DIR if it doesn't exist -->
-    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 
-    <!-- Console Appender -->
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- File Appender -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${LOG_FILE}.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -28,9 +25,8 @@
         </encoder>
     </appender>
 
-    <!-- Root Logger -->
-    <root level="DEBUG">
-        <appender-ref ref="STDOUT"/>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </root>
 </configuration>

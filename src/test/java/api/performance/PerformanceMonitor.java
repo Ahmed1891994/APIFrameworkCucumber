@@ -15,7 +15,7 @@ public class PerformanceMonitor {
 
     public void recordResponseTime(String endpoint, long milliseconds) {
         responseTimes.computeIfAbsent(endpoint, k -> new ArrayList<>()).add(milliseconds);
-        logger.debug("Recorded response time for {}: {}ms", endpoint, milliseconds);
+        logger.info("Recorded response time for {}: {}ms", endpoint, milliseconds);
     }
 
     public PerformanceReport generateReport() {
@@ -30,7 +30,7 @@ public class PerformanceMonitor {
 
                 report.addEndpointStats(endpoint, times.size(), average, min, max);
 
-                logger.debug("Generated stats for {}: {} requests, avg={}ms, min={}ms, max={}ms",
+                logger.info("Generated stats for {}: {} requests, avg={}ms, min={}ms, max={}ms",
                         endpoint, times.size(), String.format("%.2f", average), min, max);
             }
         });

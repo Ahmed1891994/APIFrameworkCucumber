@@ -25,8 +25,8 @@ Feature: Author Management API
       | totalBooks  | 3              |
       | genres      | ["Fiction","Mystery"] |
       | scores      | [90,85,78]     |
-      | wealth      | "100000.50"    |
-      | followers   | "1500"         |
+      | wealth      | 100000.50    |
+      | followers   | 1500         |
     When send a POST request
     Then validate status code of 201
     And extract values from response

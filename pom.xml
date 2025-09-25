@@ -12,14 +12,19 @@
     <testng.version>7.8.0</testng.version>
     <jackson.version>2.15.3</jackson.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <json-path.version>2.8.0</json-path.version>
+    <json-path.version>2.9.0</json-path.version>
     <allure.version>2.24.0</allure.version>
-    <allure-cucumber7-jvm.version>2.24.0</allure-cucumber7-jvm.version>
+    <allure-cucumber7-jvm.version>2.29.1</allure-cucumber7-jvm.version>
     <aspectj.version>1.9.19</aspectj.version>
     <slf4j.version>2.0.9</slf4j.version>
-    <logback.version>1.4.11</logback.version>
+    <logback.version>1.5.18</logback.version>
     <httpclient5.version>5.2.1</httpclient5.version>
     <json-schema-validator.version>1.5.8</json-schema-validator.version>
+    <jackson-databind.version>2.17.2</jackson-databind.version>
+    <opencsv.version>5.12.0</opencsv.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+    <allure-maven-plugin.version>2.12.0</allure-maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -68,7 +73,7 @@
     <dependency>
       <groupId>com.jayway.jsonpath</groupId>
       <artifactId>json-path</artifactId>
-      <version>2.9.0</version>
+      <version>${json-path.version}</version>
       <exclusions>
         <!-- Exclude vulnerable/unused libs -->
         <exclusion>
@@ -86,7 +91,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.17.2</version>
+      <version>${jackson-databind.version}</version>
     </dependency>
 
     <!-- Allure Reporting -->
@@ -95,6 +100,13 @@
       <artifactId>allure-cucumber7-jvm</artifactId>
       <version>${allure-cucumber7-jvm.version}</version>
       <scope>test</scope>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/io.qameta.allure/allure-attachments -->
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-attachments</artifactId>
+      <version>${allure-cucumber7-jvm.version}</version>
     </dependency>
 
     <!-- Logging -->
@@ -115,19 +127,12 @@
       <version>${logback.version}</version>
     </dependency>
 
-    <!-- https://mvnrepository.com/artifact/net.datafaker/datafaker -->
-    <dependency>
-      <groupId>net.datafaker</groupId>
-      <artifactId>datafaker</artifactId>
-      <version>2.4.4</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/com.opencsv/opencsv -->
+    <!-- CSV Processing -->
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
-      <version>5.12.0</version>
+      <version>${opencsv.version}</version>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -135,7 +140,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
           <source>24</source>
           <target>24</target>
@@ -145,7 +150,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.2.5</version>
+        <version>${maven-surefire-plugin.version}</version>
         <configuration>
           <suiteXmlFiles>
             <suiteXmlFile>testng.xml</suiteXmlFile>
@@ -170,7 +175,7 @@
       <plugin>
         <groupId>io.qameta.allure</groupId>
         <artifactId>allure-maven</artifactId>
-        <version>2.12.0</version>
+        <version>${allure-maven-plugin.version}</version>
         <configuration>
           <reportVersion>${allure.version}</reportVersion>
           <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>

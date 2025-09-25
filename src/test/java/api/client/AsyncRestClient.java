@@ -1,15 +1,15 @@
 package api.client;
 
+import api.config.Configuration;
+import api.performance.PerformanceMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hc.client5.http.async.methods.*;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.core5.util.Timeout;
-
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -17,38 +17,37 @@ import java.util.concurrent.CompletableFuture;
 public class AsyncRestClient {
     private static final Logger logger = LoggerFactory.getLogger(AsyncRestClient.class);
     private final CloseableHttpAsyncClient client;
-    private final Map<String, String> defaultHeaders;
+    private final PerformanceMonitor performanceMonitor;
+
     private String baseUrl;
-    private SimpleHttpRequest lastRequest;
-    private SimpleHttpResponse lastResponse;
 
-    // Interceptor interfaces
-    public interface RequestInterceptor {
-        void intercept(SimpleHttpRequest request);
+    public AsyncRestClient(PerformanceMonitor performanceMonitor, Configuration configuration) {
+        this(createConfiguredHttpClient(configuration), performanceMonitor, configuration);
     }
 
-    public interface ResponseInterceptor {
-        void intercept(SimpleHttpResponse response);
-    }
-
-    private final List<RequestInterceptor> requestInterceptors = new ArrayList<>();
-    private final List<ResponseInterceptor> responseInterceptors = new ArrayList<>();
-
-    public AsyncRestClient() {
-        this(HttpAsyncClients.custom()
-                .setDefaultRequestConfig(RequestConfig.custom()
-                        .setConnectionRequestTimeout(Timeout.ofSeconds(30))
-                        .setResponseTimeout(Timeout.ofSeconds(30))
-                        .build())
-                .build());
-    }
-
-    public AsyncRestClient(CloseableHttpAsyncClient customClient) {
+    public AsyncRestClient(CloseableHttpAsyncClient customClient, PerformanceMonitor performanceMonitor, Configuration configuration) {
         logger.info("Initializing AsyncRestClient");
         this.client = customClient;
+        this.performanceMonitor = performanceMonitor;
+        this.baseUrl = configuration.getBaseUrl();
         this.client.start();
-        this.defaultHeaders = new HashMap<>();
-        logger.debug("AsyncRestClient initialized with default headers: {}", defaultHeaders);
+        logger.info("AsyncRestClient initialized with base URL: {} and timeouts: request={}s, response={}s",
+                baseUrl, configuration.getRequestTimeout(), configuration.getResponseTimeout());
+    }
+
+    // Helper method to create HTTP client with configuration
+    private static CloseableHttpAsyncClient createConfiguredHttpClient(Configuration configuration) {
+        int requestTimeout = configuration.getRequestTimeout();
+        int responseTimeout = configuration.getResponseTimeout();
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectionRequestTimeout(Timeout.ofSeconds(requestTimeout))
+                .setResponseTimeout(Timeout.ofSeconds(responseTimeout))
+                .build();
+
+        return HttpAsyncClients.custom()
+                .setDefaultRequestConfig(requestConfig)
+                .build();
     }
 
     public void setBaseUrl(String baseUrl) {
@@ -56,116 +55,65 @@ public class AsyncRestClient {
         this.baseUrl = baseUrl;
     }
 
-    public void addHeader(String key, String value) {
-        logger.debug("Adding header: {} = {}", key, value);
-        this.defaultHeaders.put(key, value);
-    }
 
-    public Map<String, String> getDefaultHeaders() {
-        return new HashMap<>(defaultHeaders);
-    }
-
-    public void addRequestInterceptor(RequestInterceptor interceptor) {
-        requestInterceptors.add(interceptor);
-    }
-
-    public void addResponseInterceptor(ResponseInterceptor interceptor) {
-        responseInterceptors.add(interceptor);
-    }
-
-    public SimpleHttpRequest getLastRequest() {
-        return lastRequest;
-    }
-
-    public SimpleHttpResponse getLastResponse() {
-        return lastResponse;
-    }
-
-    public CompletableFuture<SimpleHttpResponse> sendRequest(String method, String endpoint, String body, Map<String, String> headers) {
-        return sendRequest(method, endpoint, body, headers, 0);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> sendRequest(String method, String endpoint, String body, Map<String, String> headers, int maxRetries) {
-        String url = baseUrl + endpoint;
-
-        // Auto-manage Content-Type
-        Map<String, String> finalHeaders = new HashMap<>(defaultHeaders);
-        if (headers != null) {
-            finalHeaders.putAll(headers);
-        }
-
-        // Remove Content-Type header if body is empty/null
-        if (body == null || body.isBlank()) {
-            finalHeaders.remove("Content-Type");
-        }
-
+    public CompletableFuture<SimpleHttpResponse> sendRequest(String method, String url, String body, Map<String, String> finalHeaders, int maxRetries) {
         SimpleHttpRequest request;
+        SimpleRequestBuilder builder = SimpleRequestBuilder.create(method)
+                .setUri(url);
         if (body != null && !body.isEmpty() && (method.equalsIgnoreCase("POST") || method.equalsIgnoreCase("PUT") || method.equalsIgnoreCase("PATCH"))) {
-            request = SimpleRequestBuilder.create(method)
-                    .setUri(url)
-                    .setBody(body, ContentType.APPLICATION_JSON)
-                    .build();
-        } else {
-            request = SimpleRequestBuilder.create(method)
-                    .setUri(url)
-                    .build();
+
+            builder.setBody(body, null);
         }
+        finalHeaders.forEach(builder::addHeader);
+        request = builder.build();
 
-        // Apply headers - this will override any Content-Type set by setBody
-        finalHeaders.forEach(request::addHeader);
+        // Debug: Log actual headers being sent
+        logger.info("Actual request headers:");
+        Arrays.stream(request.getHeaders()).forEach(h ->
+                logger.info("  {}: {}", h.getName(), h.getValue()));
 
-        // Apply request interceptors
-        for (RequestInterceptor interceptor : requestInterceptors) {
-            interceptor.intercept(request);
-        }
-
-
-        if (body == null || Objects.requireNonNull(body).isEmpty()) {
-            logger.debug("Request body: {}", body);
-        }
-
-        // Store the request
-        this.lastRequest = request;
 
         CompletableFuture<SimpleHttpResponse> responseFuture = new CompletableFuture<>();
 
         logger.info("🚀 Sending {} request to: {}", method, url);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Request body: {}", body);
-            logger.debug("Request headers: {}", finalHeaders);
-        }
+        logger.info("Request body: {}", body);
+        logger.info("Request headers: {}", finalHeaders);
 
         // Execute with retry logic
-        executeWithRetry(request, responseFuture, maxRetries, 0);
+        executeWithRetry(method, url, request, responseFuture, maxRetries, 0);
 
         return responseFuture;
     }
 
-    private void executeWithRetry(SimpleHttpRequest request, CompletableFuture<SimpleHttpResponse> responseFuture, int maxRetries, int attempt) {
+    private void executeWithRetry(String method, String endpoint, SimpleHttpRequest request,
+                                  CompletableFuture<SimpleHttpResponse> responseFuture,
+                                  int maxRetries, int attempt) {
+        // Start measuring time at the HTTP level
+        long startTime = System.currentTimeMillis();
+
         client.execute(
                 request,
-                new FutureCallback<SimpleHttpResponse>() {
+                new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse result) {
+                        // Stop measuring time and calculate duration
+                        long endTime = System.currentTimeMillis();
+                        long duration = endTime - startTime;
+
+                        performanceMonitor.recordResponseTime(method, endpoint, duration);
+
                         logger.info("✅ Request completed with status: {}", result.getCode());
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Response body: {}", result.getBodyText());
-                        }
-
-                        // Store the response
-                        lastResponse = result;
-
-                        // Apply response interceptors
-                        for (ResponseInterceptor interceptor : responseInterceptors) {
-                            interceptor.intercept(result);
-                        }
+                        logger.info("Response body: {}", result.getBodyText());
+                        logger.info("Request took {}ms", duration);
 
                         responseFuture.complete(result);
                     }
 
                     @Override
                     public void failed(Exception ex) {
-                        logger.error("❌ Request failed: {}", ex.getMessage());
+                        long endTime = System.currentTimeMillis();
+                        long duration = endTime - startTime;
+                        logger.error("❌ Request failed after {}ms: {}", duration, ex.getMessage());
 
                         if (attempt < maxRetries) {
                             logger.info("Retrying request (attempt {}/{})", attempt + 1, maxRetries);
@@ -174,7 +122,7 @@ public class AsyncRestClient {
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                             }
-                            executeWithRetry(request, responseFuture, maxRetries, attempt + 1);
+                            executeWithRetry(method, endpoint, request, responseFuture, maxRetries, attempt + 1);
                         } else {
                             responseFuture.completeExceptionally(ex);
                         }
@@ -182,7 +130,9 @@ public class AsyncRestClient {
 
                     @Override
                     public void cancelled() {
-                        logger.warn("Request was cancelled");
+                        long endTime = System.currentTimeMillis();
+                        long duration = endTime - startTime;
+                        logger.warn("Request was cancelled after {}ms", duration);
                         responseFuture.cancel(true);
                     }
                 });
@@ -212,46 +162,6 @@ public class AsyncRestClient {
             sb.append("\n").append(response.getBodyText());
         }
         return sb.toString();
-    }
-
-    public CompletableFuture<SimpleHttpResponse> get(String endpoint, Map<String, String> headers) {
-        return sendRequest("GET", endpoint, null, headers);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> get(String endpoint, Map<String, String> headers, int maxRetries) {
-        return sendRequest("GET", endpoint, null, headers, maxRetries);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> post(String endpoint, String body, Map<String, String> headers) {
-        return sendRequest("POST", endpoint, body, headers);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> post(String endpoint, String body, Map<String, String> headers, int maxRetries) {
-        return sendRequest("POST", endpoint, body, headers, maxRetries);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> put(String endpoint, String body, Map<String, String> headers) {
-        return sendRequest("PUT", endpoint, body, headers);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> put(String endpoint, String body, Map<String, String> headers, int maxRetries) {
-        return sendRequest("PUT", endpoint, body, headers, maxRetries);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> patch(String endpoint, String body, Map<String, String> headers) {
-        return sendRequest("PATCH", endpoint, body, headers);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> patch(String endpoint, String body, Map<String, String> headers, int maxRetries) {
-        return sendRequest("PATCH", endpoint, body, headers, maxRetries);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> delete(String endpoint, Map<String, String> headers) {
-        return sendRequest("DELETE", endpoint, null, headers);
-    }
-
-    public CompletableFuture<SimpleHttpResponse> delete(String endpoint, Map<String, String> headers, int maxRetries) {
-        return sendRequest("DELETE", endpoint, null, headers, maxRetries);
     }
 
     public void close() {

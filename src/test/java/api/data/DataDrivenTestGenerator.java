@@ -12,27 +12,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 
 public class DataDrivenTestGenerator {
     private static final Logger logger = LoggerFactory.getLogger(DataDrivenTestGenerator.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static boolean debugMode = false;
-
-    // Method to set debug mode from configuration
-    public static void setDebugMode(boolean debug) {
-        debugMode = debug;
-        if (debugMode) {
-            logger.info("Debug mode enabled for DataDrivenTestGenerator");
-        }
-    }
 
     public List<Map<String, String>> loadTestData(String source) {
-        if (debugMode) {
-            logger.debug("Loading test data from: {}", source);
-        }
+        logger.info("Loading test data from: {}", source);
 
         // Remove any prefix and detect format by extension
         String actualPath = source.replaceFirst("^(classpath:|file:|csv:|json:)", "");
@@ -42,7 +29,6 @@ public class DataDrivenTestGenerator {
         } else if (source.endsWith(".json") || source.startsWith("json:")) {
             return loadFromJson(actualPath);
         } else {
-            // Try to auto-detect from classpath
             try {
                 return loadFromClasspath(actualPath);
             } catch (Exception e) {
@@ -53,9 +39,7 @@ public class DataDrivenTestGenerator {
     }
 
     private List<Map<String, String>> loadFromClasspath(String path) {
-        if (debugMode) {
-            logger.debug("Loading from classpath: {}", path);
-        }
+        logger.info("Loading from classpath: {}", path);
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
@@ -75,9 +59,7 @@ public class DataDrivenTestGenerator {
     }
 
     private List<Map<String, String>> loadFromCsv(String path) {
-        if (debugMode) {
-            logger.debug("Loading CSV from: {}", path);
-        }
+        logger.info("Loading CSV from: {}", path);
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
@@ -90,9 +72,7 @@ public class DataDrivenTestGenerator {
     }
 
     private List<Map<String, String>> loadFromJson(String path) {
-        if (debugMode) {
-            logger.debug("Loading JSON from: {}", path);
-        }
+        logger.info("Loading JSON from: {}", path);
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
@@ -109,146 +89,70 @@ public class DataDrivenTestGenerator {
 
         try (Reader reader = new InputStreamReader(is);
              CSVReader csvReader = new CSVReaderBuilder(reader)
-                     .withSkipLines(0) // Don't skip any lines
+                     .withSkipLines(0)
                      .build()) {
 
             // Read all data
             List<String[]> allData = csvReader.readAll();
 
-            if (debugMode) {
+            if (logger.isDebugEnabled()) {
                 logger.debug("Raw CSV data: {}", Arrays.deepToString(allData.toArray()));
             }
 
             if (allData.isEmpty()) {
-                if (debugMode) {
-                    logger.debug("CSV file is empty");
-                }
+                logger.warn("CSV file is empty");
                 return result;
             }
 
             // First row is headers
-            String[] headers = allData.get(0);
-            if (debugMode) {
-                logger.debug("Headers: {}", Arrays.toString(headers));
-            }
+            String[] headers = allData.getFirst();
+            logger.info("Detected headers: {}", Arrays.toString(headers));
 
             // Process data rows
             for (int i = 1; i < allData.size(); i++) {
                 String[] row = allData.get(i);
 
-                if (debugMode) {
-                    logger.debug("Row {}: {}", i, Arrays.toString(row));
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Row {} raw: {}", i, Arrays.toString(row));
                 }
 
                 // Check if the row has the correct number of columns
                 if (row.length < headers.length) {
-                    logger.warn("Row {} has {} columns, expected {}. Padding with empty values.",
+                    logger.warn("Row {} has {} columns, expected {} → padding with empty values.",
                             i, row.length, headers.length);
-                    // Pad the row with empty values
-                    row = Arrays.copyOf(row, headers.length);
-                    for (int j = row.length; j < headers.length; j++) {
-                        row[j] = "";
-                    }
+
+                    String[] newRow = new String[headers.length];
+                    System.arraycopy(row, 0, newRow, 0, row.length);
+                    Arrays.fill(newRow, row.length, headers.length, "");
+                    row = newRow;
                 }
 
                 Map<String, String> rowMap = new HashMap<>();
-                for (int j = 0; j < headers.length && j < row.length; j++) {
+                for (int j = 0; j < headers.length; j++) {
                     String value = row[j] != null ? row[j].trim() : "";
                     rowMap.put(headers[j], value);
                 }
 
                 result.add(rowMap);
-
-                if (debugMode) {
-                    logger.debug("Row {} parsed: {}", i, rowMap);
-                }
+                logger.debug("Row {} parsed: {}", i, rowMap);
             }
         }
 
-        logger.info("Successfully parsed {} rows from CSV", result.size());
-
-        if (debugMode && !result.isEmpty()) {
-            logger.debug("Final parsed data: {}", result);
-        }
-
+        logger.info("Parsed {} rows from CSV successfully", result.size());
         return result;
     }
 
     private List<Map<String, String>> loadJsonFromStream(InputStream is) throws IOException {
-        if (debugMode) {
-            logger.debug("Loading JSON from stream");
-        }
+        logger.info("Loading JSON from stream");
 
-        List<Map<String, String>> result = objectMapper.readValue(is, new TypeReference<List<Map<String, String>>>() {});
+        List<Map<String, String>> result = objectMapper.readValue(is, new TypeReference<>() {});
 
-        if (debugMode) {
-            logger.debug("Successfully parsed {} rows from JSON: {}", result.size(), result);
+        logger.info("Parsed {} rows from JSON", result.size());
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Parsed JSON content: {}", result);
         }
 
         return result;
-    }
-
-    private List<Map<String, String>> loadFromFile(String path) {
-        if (debugMode) {
-            logger.debug("Loading from file: {}", path);
-        }
-
-        try {
-            if (path.endsWith(".csv")) {
-                try (Reader reader = Files.newBufferedReader(Paths.get(path));
-                     CSVReader csvReader = new CSVReaderBuilder(reader).build()) {
-
-                    List<String[]> allData = csvReader.readAll();
-                    List<Map<String, String>> result = new ArrayList<>();
-
-                    if (allData.isEmpty()) {
-                        return result;
-                    }
-
-                    String[] headers = allData.get(0);
-
-                    for (int i = 1; i < allData.size(); i++) {
-                        String[] row = allData.get(i);
-                        Map<String, String> rowMap = new HashMap<>();
-
-                        // Pad row if necessary
-                        if (row.length < headers.length) {
-                            row = Arrays.copyOf(row, headers.length);
-                            for (int j = row.length; j < headers.length; j++) {
-                                row[j] = "";
-                            }
-                        }
-
-                        for (int j = 0; j < headers.length && j < row.length; j++) {
-                            rowMap.put(headers[j], row[j] != null ? row[j].trim() : "");
-                        }
-
-                        result.add(rowMap);
-                    }
-
-                    return result;
-                }
-            } else if (path.endsWith(".json")) {
-                return objectMapper.readValue(Files.newInputStream(Paths.get(path)),
-                        new TypeReference<List<Map<String, String>>>() {});
-            } else {
-                throw new IllegalArgumentException("Unsupported file format: " + path);
-            }
-        } catch (IOException | CsvException e) {
-            throw new RuntimeException("Failed to load data from file: " + path, e);
-        }
-    }
-
-    // Helper method to debug CSV parsing issues
-    public static void debugCsvParsing(String csvContent) {
-        try {
-            List<String[]> data = new CSVReaderBuilder(new java.io.StringReader(csvContent)).build().readAll();
-            System.out.println("=== CSV PARSING DEBUG ===");
-            for (int i = 0; i < data.size(); i++) {
-                System.out.println("Line " + i + ": " + Arrays.toString(data.get(i)));
-            }
-        } catch (Exception e) {
-            System.out.println("CSV parsing failed: " + e.getMessage());
-        }
     }
 }

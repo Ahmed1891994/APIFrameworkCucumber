@@ -28,7 +28,7 @@ public class AuthManager {
 
         // Apply auth to client's default headers
         Map<String, String> authHeaders = provider.getAuthHeaders(authParams);
-        authHeaders.forEach(client::addHeader);
+        //authHeaders.forEach(client::addHeader);
     }
 
     public SimpleHttpRequest applyAuthToRequest(String authType, Map<String, String> authParams, SimpleHttpRequest request) {

@@ -6,15 +6,13 @@ import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
 import com.jayway.jsonpath.PathNotFoundException;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PathExtractor {
-    private final Map<String, Object> extractedValues = new HashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(PathExtractor.class);
     private final Configuration jacksonConfig;
     private final ObjectMapper objectMapper;
-
 
     public PathExtractor() {
         objectMapper = new ObjectMapper();
@@ -25,17 +23,66 @@ public class PathExtractor {
                 .build();
     }
 
-    public void extractValue(String response, String jsonPath, String key) {
+    /**
+     * Extracts a value from JSON response using JSONPath and returns it (doesn't store it)
+     */
+    public Object extractValue(String response, String jsonPath, String key) {
         try {
             JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
-            extractedValues.put(key, convertJsonNode(result));
+            Object convertedValue = convertJsonNode(result);
+            logger.info("📤 Extracted value from JSON path '{}': {} -> {}", jsonPath, key, convertedValue);
+            return convertedValue;
         } catch (PathNotFoundException e) {
+            logger.warn("❌ JSON path '{}' not found in response", jsonPath);
             throw new RuntimeException("JSON path '" + jsonPath + "' not found in response", e);
         } catch (Exception e) {
+            logger.error("❌ Failed to extract value from path '{}': {}", jsonPath, e.getMessage());
             throw new RuntimeException("Failed to extract value from path: " + jsonPath, e);
         }
     }
 
+    /**
+     * Reads a value from JSON using JSONPath without storing it
+     */
+    public Object readJsonPath(String response, String jsonPath) {
+        try {
+            JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
+            Object value = convertJsonNode(result);
+            logger.debug("📖 Read JSON path '{}': {}", jsonPath, value);
+            return value;
+        } catch (PathNotFoundException e) {
+            logger.debug("JSON path '{}' not found, returning null", jsonPath);
+            return null;
+        } catch (Exception e) {
+            logger.error("❌ Failed to read JSON path '{}': {}", jsonPath, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Checks if a JSON path exists in the response
+     */
+    public boolean existsJsonPath(String json, String jsonPath) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(json);
+            if (jsonPath.startsWith("$.")) {
+                String fieldName = jsonPath.substring(2);
+                boolean exists = jsonNode.has(fieldName);
+                logger.debug("🔍 JSON path '{}' exists: {}", jsonPath, exists);
+                return exists;
+            }
+            boolean isRoot = jsonPath.equals("$");
+            logger.debug("🔍 JSON path '{}' is root: {}", jsonPath, isRoot);
+            return isRoot;
+        } catch (Exception e) {
+            logger.warn("⚠️ Error checking JSON path existence '{}': {}", jsonPath, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Converts JsonNode to appropriate Java type
+     */
     private Object convertJsonNode(JsonNode node) {
         if (node == null || node.isNull()) return null;
         if (node.isTextual()) return node.textValue();
@@ -43,96 +90,5 @@ public class PathExtractor {
         if (node.isBoolean()) return node.booleanValue();
         if (node.isArray() || node.isObject()) return node.toString();
         return node.asText();
-    }
-
-    public void storeValue(String key, Object value) {
-        extractedValues.put(key, value);
-    }
-
-    public Object getValue(String key) {
-        return extractedValues.get(key);
-    }
-
-    public boolean hasValue(String key) {
-        return extractedValues.containsKey(key);
-    }
-
-    public String buildUrl(String baseUrl, String endpoint, Map<String, String> pathParams) {
-        String finalEndpoint = endpoint;
-
-        // First use explicit path parameters
-        if (pathParams != null) {
-            for (Map.Entry<String, String> entry : pathParams.entrySet()) {
-                String paramValue = entry.getValue();
-                if (extractedValues.containsKey(paramValue)) {
-                    paramValue = String.valueOf(extractedValues.get(paramValue));
-                }
-                finalEndpoint = finalEndpoint.replace("{" + entry.getKey() + "}", paramValue);
-            }
-        }
-
-        for (Map.Entry<String, Object> entry : extractedValues.entrySet()) {
-            String placeholder = "{" + entry.getKey() + "}";
-            if (finalEndpoint.contains(placeholder) && entry.getValue() != null) {
-                finalEndpoint = finalEndpoint.replace(placeholder, entry.getValue().toString());
-            }
-        }
-
-        return baseUrl + finalEndpoint;
-    }
-
-    public void clear() {
-        extractedValues.clear();
-    }
-
-    public Map<String, Object> getAllValues() {
-        return new HashMap<>(extractedValues);
-    }
-
-    public Object readJsonPath(String response, String jsonPath) {
-        try {
-            JsonNode result = JsonPath.using(jacksonConfig).parse(response).read(jsonPath, JsonNode.class);
-            return convertJsonNode(result);
-        } catch (PathNotFoundException e) {
-            return null;
-        }
-    }
-
-    public boolean existsJsonPath(String json, String jsonPath) {
-        try {
-            JsonNode jsonNode = objectMapper.readTree(json);
-
-            // Handle simple paths like "$.extraField", "$.name", etc.
-            if (jsonPath.startsWith("$.")) {
-                String fieldName = jsonPath.substring(2); // Remove "$." prefix
-                return jsonNode.has(fieldName);
-            }
-
-            // Handle root level access "$"
-            return jsonPath.equals("$"); // Root always exists
-
-            // For array access like "$[0]", you'd need more complex logic
-            // For now, let's keep it simple and return false for complex paths
-
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public Configuration getJacksonConfig() {
-        return jacksonConfig;
-    }
-
-    public String resolvePlaceholders(String text) {
-        if (text == null) return null;
-
-        String result = text;
-        for (Map.Entry<String, Object> entry : extractedValues.entrySet()) {
-            Object value = entry.getValue();
-            if (value != null) {
-                result = result.replace("${" + entry.getKey() + "}", value.toString());
-            }
-        }
-        return result;
     }
 }

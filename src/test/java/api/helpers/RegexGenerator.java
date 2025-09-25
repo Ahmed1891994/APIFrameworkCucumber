@@ -41,16 +41,63 @@ public class RegexGenerator {
             else if (pattern.equalsIgnoreCase("uuid")) {
                 return generateUUID();
             }
-            // Handle string with length pattern
-            else if (pattern.matches("string\\(\\d+\\)")) {
-                int length = Integer.parseInt(pattern.substring(7, pattern.length()-1));
-                return generateString(length);
+            // Handle string patterns with length parameter
+            else if (pattern.matches("(string|letters|upper|lower|alphanumeric)\\(\\d+\\)")) {
+                int length = extractLengthFromPattern(pattern);
+
+                if (pattern.startsWith("string(")) {
+                    return generateString(length);
+                } else if (pattern.startsWith("letters(")) {
+                    return generateLettersOnly(length);
+                } else if (pattern.startsWith("upper(")) {
+                    return generateUppercaseOnly(length);
+                } else if (pattern.startsWith("lower(")) {
+                    return generateLowercaseOnly(length);
+                } else if (pattern.startsWith("alphanumeric(")) {
+                    return generateString(length); // same as string()
+                }
             }
             // fallback - return as is
             return pattern;
         } catch (Exception e) {
             return pattern; // Return the pattern as fallback
         }
+    }
+
+    /**
+     * Extracts length from pattern like "string(10)", "upper(5)", etc.
+     */
+    private int extractLengthFromPattern(String pattern) {
+        int openParen = pattern.indexOf('(');
+        int closeParen = pattern.indexOf(')');
+        return Integer.parseInt(pattern.substring(openParen + 1, closeParen));
+    }
+
+    private String generateLettersOnly(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
+    }
+
+    private String generateUppercaseOnly(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
+    }
+
+    private String generateLowercaseOnly(int length) {
+        String characters = "abcdefghijklmnopqrstuvwxyz";
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
     }
 
     private String generateFromRange(int start, int end, int length) {
@@ -70,7 +117,7 @@ public class RegexGenerator {
     }
 
     private String generateEmail() {
-        return "test" + System.currentTimeMillis() + "@example.com";
+        return "test" + System.currentTimeMillis() + "@grr.com";
     }
 
     private String generatePhone() {

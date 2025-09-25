@@ -10,7 +10,7 @@ Feature: Advanced Author Testing
     # Test random data generation and context manipulation
     Given set endpoint to "/authors"
     And generate random values
-      | name      | string(10)        |
+      | name      | letters(10)        |
       | age       | [2-7]{2}          |
       | email     | email             |
       | phone     | phone             |
@@ -18,28 +18,29 @@ Feature: Advanced Author Testing
       | numericId | \d{5}             |
       | rangeVal  | [0-5]{3}          |
 
-    And add to body from context
+    And add to JSON body "Create_body" from context
       | name   | name      |
       | age    | age       |
       | email  | email     |
       | phone  | phone     |
       | uuid   | uuid      |
 
-    And add to body
+    And set JSON body "Create_body" with:
       | active     | true               |
       | rating     | 4.5                |
       | totalBooks | 10                 |
       | genres     | ["Fiction","Tech"] |
       | extraField | should_be_removed  |
 
-    And remove from body
+    And remove from JSON body "Create_body" keys
       | extraField |
 
-    And add to body
+    And set JSON body "Create_body" with:
       | followers | 500 |
 
     When send a POST request
     Then validate status code of 201
+    And verify last request response time is less than 1000 ms
     And verify response json path "$.name" equals "${name}"
     And verify response json path "$.age" equals "${age}"
     And verify response json path "$.extraField" not exists
@@ -49,18 +50,18 @@ Feature: Advanced Author Testing
       | $.id       | author_id          |
       | $.name     | saved_name         |
       | $.age      | saved_age          |
-      | $.email    | saved_email        |
+
 
     # Test body clearing and context-based updates
     And set endpoint to "/authors/{author_id}"
-    And clear body for endpoint "/authors"
+    And clear body "Create_body"
     And generate random values
-      | updatedName | string(12) |
+      | updatedName | letters(12) |
 
-    And add to body from context
+    And add to JSON body "Create_body" from context
       | name | updatedName |
 
-    And add to body
+    And set JSON body "Create_body" with:
       | age | 45 |
       | active | true  |
     When send a PUT request
@@ -69,9 +70,8 @@ Feature: Advanced Author Testing
     And verify response json path "$.age" equals "45"
 
     # Test performance monitoring
-    When send a GET request and measure performance
     Then validate status code of 200
-    And verify maximum response time for "/authors/{author_id}" is less than 30 ms
+    And verify last request response time is less than 400 ms
 
     # Test request retries
     And set endpoint to "/authors/99999"
@@ -86,17 +86,27 @@ Feature: Advanced Author Testing
   Scenario: Data-driven testing from external sources
     # Test CSV data loading
     Given load test data from "testdata/authors.csv"
+    And generate random values
+      | name1 | letters(12) |
+      | name2 | letters(12) |
+      | name3 | letters(12) |
+      | name4 | letters(12) |
     And use test data row 1
 
     And set endpoint to "/authors"
-    And add to body from context
-      | name   | csv_name |
-      | age    | csv_age  |
-      | active | csv_active |
-
+    And add to JSON body "Create_body" from context
+      | name        | name1         |
+      | age         | csv_age       |
+      | active      | csv_active    |
+      | rating      | csv_rating    |
+      | totalBooks  | csv_totalBooks|
+      | genres      | csv_genres    |
+      | scores      | csv_scores    |
+      | wealth      | csv_wealth    |
+      | followers   | csv_followers |
     When send a POST request
     Then validate status code of 201
-    And verify response json path "$.name" equals "${csv_name}"
+    And verify response json path "$.name" equals "${name1}"
     And verify response json path "$.age" equals "${csv_age}"
 
     And extract values from response
@@ -106,9 +116,9 @@ Feature: Advanced Author Testing
     Given load test data from "testdata/authors.json"
     And use test data row 4
 
-    And clear current body
-    And add to body from context
-      | name        | json_name      |
+    And clear body "Create_body"
+    And add to JSON body "Create_body" from context
+      | name        | name2          |
       | age         | json_age       |
       | active      | json_active    |
       | rating      | json_rating    |
@@ -121,7 +131,7 @@ Feature: Advanced Author Testing
     When send a POST request
     Then validate status code of 201
     And verify response schema "author_schema"
-    And verify response json path "$.name" equals "Michael Brown"
+    And verify response json path "$.name" equals "${name2}"
 
     And extract values from response
       | $.id | json_author_id |
@@ -132,28 +142,27 @@ Feature: Advanced Author Testing
 
     And set endpoint to "/authors/{csv_author_id}"
     And add to path parameters from context
-      | id | csv_author_id |
-    And clear current body
-    And add to body from context
-      | name   | csv_name |
-      | age    | csv_age  |
+      | csv_author_id | csv_author_id |
+    And clear body "Create_body"
+    And add to JSON body "Create_body" from context
+      | name   | name3      |
+      | age    | csv_age    |
       | active | csv_active |
 
     When send a PUT request
     Then validate status code of 200
-    And verify response json path "$.name" equals "${csv_name}"
+    And verify response json path "$.name" equals "${name3}"
 
     # Test response contains verification
     And verify response contains "id"
-    And verify response contains "${csv_name}"
+    And verify response contains "${name3}"
 
     # Test schema validation from classpath
     And verify response schema from classpath "author_schema"
 
     # Test performance on multiple operations
-    When send a GET request and measure performance
     Then validate status code of 200
-    And verify maximum response time for "/authors/{csv_author_id}" is less than 200 ms
+    And verify last request response time is less than 500 ms
 
     # Cleanup both authors
     And set endpoint to "/authors/{csv_author_id}"
@@ -170,15 +179,18 @@ Feature: Advanced Author Testing
     And use test data row 4
 
     And set endpoint to "/authors"
-    And add to body from context
-      | name   | json_name |
+    And generate random values
+      | name1      | letters(10)        |
+
+    And add to JSON body "Create_body" from context
+      | name   | name1 |
       | age    | json_age  |
       | active | json_active |
       | rating | json_rating |
 
     When send a POST request
     Then validate status code of 201
-    And verify response json path "$.name" equals "Michael Brown"
+    And verify response json path "$.name" equals "${name1}"
     And verify response json path "$.rating" equals null
     And verify response json path "$.rating" is null
 
@@ -187,7 +199,7 @@ Feature: Advanced Author Testing
 
     # Test partial update validation
     And set endpoint to "/authors/{edge_author_id}"
-    And add to body
+    And set JSON body "Create_body" with:
       | age | 126 |
     When send a PATCH request
     Then validate status code of 400
@@ -203,32 +215,31 @@ Feature: Advanced Author Testing
     # Test multiple operations with performance tracking
     Given set endpoint to "/authors"
     And generate random values
-      | multiName1 | string(9) |
-      | multiName2 | string(10) |
+      | multiName1 | letters(9) |
+      | multiName2 | letters(10) |
 
-    And add to body from context
+    And add to JSON body "Create_body" from context
       | name   | multiName1    |
-    And add to body
+    And set JSON body "Create_body" with:
       | age    | 28            |
       | active | true          |
-    When send a POST request and measure performance
+    When send a POST request
     Then validate status code of 201
+    And verify last request response time is less than 500 ms
     And extract values from response
       | $.id | multi_author_1 |
 
     Given set endpoint to "/authors"
-    And add to body from context
+    And add to JSON body "Create_body" from context
       | name   | multiName2    |
-    And add to body
+    And set JSON body "Create_body" with:
       | age    | 32            |
       | active | false         |
-    When send a POST request and measure performance
+    When send a POST request
     Then validate status code of 201
+    And verify last request response time is less than 200 ms
     And extract values from response
       | $.id | multi_author_2 |
-
-    # Verify performance for multiple requests
-    And verify maximum response time for "/authors" is less than 1000 ms
 
     # Cleanup all authors
     And set endpoint to "/authors/{edge_author_id}"

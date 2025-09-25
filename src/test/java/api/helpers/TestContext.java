@@ -2,18 +2,13 @@ package api.helpers;
 
 import api.client.AsyncRestClient;
 import api.client.SchemaValidator;
-import api.config.ApiConfig;
+import api.config.Configuration;
 import api.data.DataDrivenTestGenerator;
 import api.auth.AuthManager;
 import api.performance.PerformanceMonitor;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TestContext {
-    private final ApiConfig apiConfig;
+    private final Configuration configuration;
     private final AsyncRestClient restClient;
     private final SchemaValidator schemaValidator;
     private final PathExtractor pathExtractor;
@@ -21,120 +16,36 @@ public class TestContext {
     private final DataDrivenTestGenerator dataDrivenTestGenerator;
     private final AuthManager authManager;
     private final PerformanceMonitor performanceMonitor;
-    private final Map<String, Object> scenarioData;
-    private final Map<String, ObjectNode> requestBodies = new ConcurrentHashMap<>();
-    private String currentRequestBodyKey = "default";
-    private final FileHelper fileHelper;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public TestContext() {
-        this(System.getProperty("env", "dev")); // Default to dev environment
-    }
+    private final OutputFileHelper outputFileHelper;
+    private final RequestDataStore requestDataStore;
 
     public TestContext(String environment) {
-        this.apiConfig = new ApiConfig(environment);
-        this.restClient = new AsyncRestClient();
+        this.configuration = new Configuration(environment);
+        this.performanceMonitor = new PerformanceMonitor();
+        this.restClient = new AsyncRestClient(this.performanceMonitor,this.configuration);
         this.schemaValidator = new SchemaValidator();
         this.pathExtractor = new PathExtractor();
         this.regexGenerator = new RegexGenerator();
         this.dataDrivenTestGenerator = new DataDrivenTestGenerator();
         this.authManager = new AuthManager();
-        this.performanceMonitor = new PerformanceMonitor();
-        this.scenarioData = new ConcurrentHashMap<>();
-        this.fileHelper = new FileHelper(this.pathExtractor);
-
-        // Apply configuration to rest client
-        this.restClient.setBaseUrl(apiConfig.getBaseUrl());
+        this.requestDataStore = new RequestDataStore(this.configuration);
+        this.outputFileHelper = new OutputFileHelper(this.requestDataStore);
     }
 
-    // Getters for all components
-    public ApiConfig getApiConfig() {
-        return apiConfig;
-    }
-
-    public AsyncRestClient getRestClient() {
-        return restClient;
-    }
-
-    public SchemaValidator getSchemaValidator() {
-        return schemaValidator;
-    }
-
-    public PathExtractor getPathExtractor() {
-        return pathExtractor;
-    }
-
-    public RegexGenerator getRegexGenerator() {
-        return regexGenerator;
-    }
-
-    public DataDrivenTestGenerator getDataDrivenTestGenerator() {
-        return dataDrivenTestGenerator;
-    }
-
-    public AuthManager getAuthManager() {
-        return authManager;
-    }
-
-    public PerformanceMonitor getPerformanceMonitor() {
-        return performanceMonitor;
-    }
-
-    public void setData(String key, Object value) {
-        scenarioData.put(key, value);
-    }
-
-    public Object getData(String key) {
-        return scenarioData.get(key);
-    }
-
-    public boolean hasData(String key) {
-        return scenarioData.containsKey(key);
-    }
-
-    public ObjectNode getRequestBody() {
-        return getRequestBody("default");
-    }
-
-    public ObjectNode getRequestBody(String endpoint) {
-        String bodyKey = generateBodyKeyFromEndpoint(endpoint);
-        return requestBodies.computeIfAbsent(bodyKey,
-                k -> objectMapper.createObjectNode());
-    }
-
-    public FileHelper getFileHelper() {
-        return fileHelper;
-    }
-
-    public void clearRequestBody() {
-        clearRequestBody("default");
-    }
-
-    public void clearRequestBody(String endpoint) {
-        String bodyKey = generateBodyKeyFromEndpoint(endpoint);
-        requestBodies.put(bodyKey, objectMapper.createObjectNode());
-    }
-
-    public void removeFromRequestBody(String endpoint, List<String> keys) {
-        ObjectNode body = getRequestBody(endpoint);
-        keys.forEach(key -> {
-            if (body.has(key)) {
-                body.remove(key);
-            }
-        });
-    }
-
-    private String generateBodyKeyFromEndpoint(String endpoint) {
-        if (endpoint == null || endpoint.trim().isEmpty()) {
-            return "default";
-        }
-        return endpoint.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
-    }
+    // Getters for components
+    public Configuration getConfiguration() { return configuration; }
+    public AsyncRestClient getRestClient() { return restClient; }
+    public SchemaValidator getSchemaValidator() { return schemaValidator; }
+    public PathExtractor getPathExtractor() { return pathExtractor; }
+    public RegexGenerator getRegexGenerator() { return regexGenerator; }
+    public DataDrivenTestGenerator getDataDrivenTestGenerator() { return dataDrivenTestGenerator; }
+    public AuthManager getAuthManager() { return authManager; }
+    public PerformanceMonitor getPerformanceMonitor() { return performanceMonitor; }
+    public OutputFileHelper getFileHelper() { return outputFileHelper; }
+    public RequestDataStore getRequestData() { return requestDataStore; }
 
     public void reset() {
-        this.pathExtractor.clear();
-        this.scenarioData.clear();
+        this.requestDataStore.clearAll();
         this.schemaValidator.clearCache();
     }
 }

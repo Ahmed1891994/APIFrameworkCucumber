@@ -4,8 +4,6 @@ import api.exceptions.ConfigurationException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 public class Configuration {
@@ -23,45 +21,89 @@ public class Configuration {
             if (input != null) {
                 assert properties != null;
                 properties.load(input);
+                // Validate required properties after loading
+                validateRequiredProperties();
             } else {
-                throw new ConfigurationException("Config file not found: " + configFile);
+                throw ConfigurationException.fileNotFound(configFile);
             }
         } catch (IOException e) {
             throw new ConfigurationException("Failed to load config: " + configFile, e);
         }
     }
 
+    private void validateRequiredProperties() {
+        // Check for required properties
+        if (!properties.containsKey("base.url")) {
+            throw ConfigurationException.missingProperty("base.url");
+        }
+
+        // Validate timeout values are positive
+        validateTimeoutProperty("request.timeout.seconds");
+        validateTimeoutProperty("response.timeout.seconds");
+    }
+
+    private void validateTimeoutProperty(String propertyName) {
+        String value = properties.getProperty(propertyName);
+        if (value != null) {
+            try {
+                int timeout = Integer.parseInt(value);
+                if (timeout <= 0) {
+                    throw ConfigurationException.invalidProperty(propertyName, value,
+                            "Timeout must be a positive integer");
+                }
+            } catch (NumberFormatException e) {
+                throw ConfigurationException.invalidProperty(propertyName, value,
+                        "Must be a valid integer", e);
+            }
+        }
+    }
+
     public String getBaseUrl() {
-        return properties.getProperty("base.url", "");
+        String baseUrl = properties.getProperty("base.url", "");
+        if (baseUrl.isEmpty()) {
+            throw ConfigurationException.missingProperty("base.url");
+        }
+        return baseUrl;
     }
 
     public int getRequestTimeout() {
         try {
-            return Integer.parseInt(properties.getProperty("request.timeout.seconds", "30"));
+            String timeoutStr = properties.getProperty("request.timeout.seconds", "30");
+            int timeout = Integer.parseInt(timeoutStr);
+            if (timeout <= 0) {
+                throw ConfigurationException.invalidProperty("request.timeout.seconds", timeoutStr,
+                        "Timeout must be positive");
+            }
+            return timeout;
         } catch (NumberFormatException e) {
-            throw new ConfigurationException("Invalid timeout configuration", e);
+            String actualValue = properties.getProperty("request.timeout.seconds");
+            throw ConfigurationException.invalidProperty("request.timeout.seconds",
+                    actualValue != null ? actualValue : "null", "Must be a valid integer", e);
         }
     }
 
     public int getResponseTimeout() {
         try {
-            return Integer.parseInt(properties.getProperty("response.timeout.seconds", "30"));
-        } catch (NumberFormatException e) {
-            throw new ConfigurationException("Invalid timeout configuration", e);
-        }
-    }
-
-    public Map<String, String> getPropertiesWithPrefix(String prefix) {
-        Map<String, String> result = new HashMap<>();
-        for (String key : properties.stringPropertyNames()) {
-            if (key.startsWith(prefix)) {
-                result.put(key.substring(prefix.length()), properties.getProperty(key));
+            String timeoutStr = properties.getProperty("response.timeout.seconds", "30");
+            int timeout = Integer.parseInt(timeoutStr);
+            if (timeout <= 0) {
+                throw ConfigurationException.invalidProperty("response.timeout.seconds", timeoutStr,
+                        "Timeout must be positive");
             }
+            return timeout;
+        } catch (NumberFormatException e) {
+            String actualValue = properties.getProperty("response.timeout.seconds");
+            throw ConfigurationException.invalidProperty("response.timeout.seconds",
+                    actualValue != null ? actualValue : "null", "Must be a valid integer", e);
         }
-        return result;
     }
 
     public boolean isUrlEncodingEnabled() {
-        return Boolean.parseBoolean(properties.getProperty("url.encoding.enabled", "true"));
+        String value = properties.getProperty("url.encoding.enabled", "true");
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw ConfigurationException.invalidProperty("url.encoding.enabled", value,
+                    "Must be 'true' or 'false'");
+        }
+        return Boolean.parseBoolean(value);
     }
 }

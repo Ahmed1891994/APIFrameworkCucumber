@@ -12,11 +12,11 @@ public class ConfigurationStepDefinitions {
 
     @Given("for the next request, disable URL encoding")
     public void disableUrlEncodingForNextRequest() {
-        context.getRequestData().setUrlEncodingForNextRequest(false);
+        context.getUrlBuilder().setUrlEncodingForNextRequest(false);
     }
 
     @Given("for the next request, enable URL encoding")
     public void enableUrlEncodingForNextRequest() {
-        context.getRequestData().setUrlEncodingForNextRequest(true);
+        context.getUrlBuilder().setUrlEncodingForNextRequest(true);
     }
 }

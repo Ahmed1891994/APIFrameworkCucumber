@@ -45,7 +45,7 @@ public class RequestStepDefinitions {
             Map<String, String> pathParams = context.getRequestData().getSafeMapFromContext("path_params");
             Map<String, String> queryParams = context.getRequestData().getSafeMapFromContext("query_params");
 
-            String finalEndpoint = context.getRequestData().buildUrl(
+            String finalEndpoint = context.getUrlBuilder().buildUrl(
                     context.getConfiguration().getBaseUrl(),
                     endpoint,
                     pathParams != null ? pathParams : Collections.emptyMap(),
@@ -74,13 +74,6 @@ public class RequestStepDefinitions {
                 requestBody = null;
             }
 
-            // Apply authentication if specified
-            String authType = context.getRequestData().getAuthType();
-            if (authType != null) {
-                Map<String, String> authParams = context.getConfiguration().getPropertiesWithPrefix("auth.");
-                context.getAuthManager().applyAuthToClient(authType, authParams, client);
-            }
-
             context.getRequestData().storeContextValue("last_request_endpoint", finalEndpoint);
 
             CompletableFuture<SimpleHttpResponse> future = switch (method.toUpperCase()) {
@@ -101,8 +94,13 @@ public class RequestStepDefinitions {
             context.getRequestData().storeContextValue("response", responseBody);
             context.getRequestData().storeContextValue("status_code", String.valueOf(response.getCode()));
             context.getRequestData().storeContextValue("last_request_endpoint", finalEndpoint);
-        }finally {
-            context.getRequestData().clearRequestSpecificSettings();
+
+            // Store response headers
+            Map<String, String> responseHeadersMap = context.getRequestData().convertHeadersToMap(response.getHeaders());
+            context.getRequestData().storeResponseHeaders(responseHeadersMap);
+
+        } finally {
+            context.getUrlBuilder().clearRequestSpecificSettings();
         }
     }
 }

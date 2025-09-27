@@ -1,6 +1,7 @@
 package api.client;
 
 import api.config.Configuration;
+import api.exceptions.HttpClientException; // ADD THIS IMPORT
 import api.performance.PerformanceMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,6 @@ public class AsyncRestClient {
     private static final Logger logger = LoggerFactory.getLogger(AsyncRestClient.class);
     private final CloseableHttpAsyncClient client;
     private final PerformanceMonitor performanceMonitor;
-
     private String baseUrl;
 
     public AsyncRestClient(PerformanceMonitor performanceMonitor, Configuration configuration) {
@@ -55,7 +55,6 @@ public class AsyncRestClient {
         this.baseUrl = baseUrl;
     }
 
-
     public CompletableFuture<SimpleHttpResponse> sendRequest(String method, String url, String body, Map<String, String> finalHeaders, int maxRetries) {
         SimpleHttpRequest request;
         SimpleRequestBuilder builder = SimpleRequestBuilder.create(method)
@@ -71,7 +70,6 @@ public class AsyncRestClient {
         logger.info("Actual request headers:");
         Arrays.stream(request.getHeaders()).forEach(h ->
                 logger.info("  {}: {}", h.getName(), h.getValue()));
-
 
         CompletableFuture<SimpleHttpResponse> responseFuture = new CompletableFuture<>();
 
@@ -121,10 +119,17 @@ public class AsyncRestClient {
                                 Thread.sleep(1000 * (long) Math.pow(2, attempt)); // Exponential backoff
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
+                                responseFuture.completeExceptionally(
+                                        HttpClientException.connectionError(endpoint, e)
+                                );
+                                return;
                             }
                             executeWithRetry(method, endpoint, request, responseFuture, maxRetries, attempt + 1);
                         } else {
-                            responseFuture.completeExceptionally(ex);
+                            // FIX THIS LINE: Use HttpClientException instead of generic exception
+                            responseFuture.completeExceptionally(
+                                    HttpClientException.retryExhausted(endpoint, maxRetries, ex)
+                            );
                         }
                     }
 
@@ -133,7 +138,10 @@ public class AsyncRestClient {
                         long endTime = System.currentTimeMillis();
                         long duration = endTime - startTime;
                         logger.warn("Request was cancelled after {}ms", duration);
-                        responseFuture.cancel(true);
+                        // FIX THIS LINE: Use HttpClientException instead of cancel()
+                        responseFuture.completeExceptionally(
+                                HttpClientException.connectionError(endpoint, new Exception("Request was cancelled"))
+                        );
                     }
                 });
     }
@@ -170,6 +178,7 @@ public class AsyncRestClient {
             client.close();
         } catch (Exception e) {
             logger.error("Error closing AsyncRestClient", e);
+            throw HttpClientException.connectionError(baseUrl, e);
         }
     }
 }

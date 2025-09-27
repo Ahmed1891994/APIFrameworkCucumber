@@ -92,4 +92,47 @@ public class ValidationStepDefinitions {
         String responseBody = (String) context.getRequestData().getContextValue("response");
         context.getSchemaValidator().validateSchemaAgainstClasspath(responseBody, schemaName);
     }
+
+    @Then("validate response header {string} equals {string}")
+    public void validateResponseHeaderEquals(String headerName, String expectedValue) {
+        String resolvedExpectedValue = context.getRequestData().resolvePlaceholders(expectedValue);
+        String actualHeaderValue = context.getRequestData().getResponseHeader(headerName);
+
+        Assert.assertNotNull(actualHeaderValue, "Response header '" + headerName + "' not found");
+        Assert.assertEquals(actualHeaderValue, resolvedExpectedValue,
+                "Response header '" + headerName + "' mismatch");
+    }
+
+    @Then("validate response header {string} contains {string}")
+    public void validateResponseHeaderContains(String headerName, String expectedText) {
+        String resolvedExpectedText = context.getRequestData().resolvePlaceholders(expectedText);
+        String actualHeaderValue = context.getRequestData().getResponseHeader(headerName);
+
+        Assert.assertNotNull(actualHeaderValue, "Response header '" + headerName + "' not found");
+        Assert.assertTrue(actualHeaderValue.contains(resolvedExpectedText),
+                "Response header '" + headerName + "' should contain: " + resolvedExpectedText);
+    }
+
+    @Then("validate response header {string} exists")
+    public void validateResponseHeaderExists(String headerName) {
+        String actualHeaderValue = context.getRequestData().getResponseHeader(headerName);
+        Assert.assertNotNull(actualHeaderValue, "Response header '" + headerName + "' should exist but was not found");
+    }
+
+    @Then("validate response header {string} not exists")
+    public void validateResponseHeaderNotExists(String headerName) {
+        String actualHeaderValue = context.getRequestData().getResponseHeader(headerName);
+        Assert.assertNull(actualHeaderValue, "Response header '" + headerName + "' should not exist but was found: " + actualHeaderValue);
+    }
+
+    @Then("save response header {string} to context as {string}")
+    public void saveResponseHeaderToContext(String headerName, String contextKey) {
+        context.getRequestData().storeHeaderToContext(headerName, contextKey);
+    }
+
+    @Then("save all response headers to context")
+    public void saveAllResponseHeadersToContext() {
+        Map<String, String> allHeaders = context.getRequestData().getAllResponseHeaders();
+        context.getRequestData().storeContextValue("all_response_headers", allHeaders);
+    }
 }

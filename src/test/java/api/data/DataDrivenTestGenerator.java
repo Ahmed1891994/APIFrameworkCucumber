@@ -1,5 +1,6 @@
 package api.data;
 
+import api.exceptions.DataLoadException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
@@ -32,8 +33,7 @@ public class DataDrivenTestGenerator {
             try {
                 return loadFromClasspath(actualPath);
             } catch (Exception e) {
-                throw new IllegalArgumentException("Unsupported data source: " + source +
-                        ". Supported formats: .csv, .json");
+                throw DataLoadException.unsupportedFormat(source, "unknown");
             }
         }
     }
@@ -43,7 +43,7 @@ public class DataDrivenTestGenerator {
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
-                throw new RuntimeException("Resource not found: " + path);
+                throw DataLoadException.fileNotFound(path, "CSV/JSON");
             }
 
             if (path.endsWith(".csv")) {
@@ -51,10 +51,10 @@ public class DataDrivenTestGenerator {
             } else if (path.endsWith(".json")) {
                 return loadJsonFromStream(is);
             } else {
-                throw new IllegalArgumentException("Unsupported file format: " + path);
+                throw DataLoadException.unsupportedFormat(path, "unknown");
             }
-        } catch (IOException | CsvException e) {
-            throw new RuntimeException("Failed to load test data from classpath: " + path, e);
+        } catch (IOException e) {
+            throw DataLoadException.parseError(path, "CSV/JSON", e);
         }
     }
 
@@ -63,11 +63,11 @@ public class DataDrivenTestGenerator {
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
-                throw new RuntimeException("CSV file not found: " + path);
+                throw DataLoadException.fileNotFound(path, "CSV");
             }
             return loadCsvFromStream(is);
-        } catch (IOException | CsvException e) {
-            throw new RuntimeException("Failed to load CSV data: " + path, e);
+        } catch (IOException e) {
+            throw DataLoadException.parseError(path, "CSV", e);
         }
     }
 
@@ -76,15 +76,16 @@ public class DataDrivenTestGenerator {
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
             if (is == null) {
-                throw new RuntimeException("JSON file not found: " + path);
+                throw DataLoadException.fileNotFound(path, "JSON");
             }
             return loadJsonFromStream(is);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load JSON data: " + path, e);
+            throw DataLoadException.parseError(path, "JSON", e);
         }
     }
 
-    private List<Map<String, String>> loadCsvFromStream(InputStream is) throws IOException, CsvException {
+    // CHANGE THESE METHOD SIGNATURES TO THROW DataLoadException INSTEAD:
+    private List<Map<String, String>> loadCsvFromStream(InputStream is) {
         List<Map<String, String>> result = new ArrayList<>();
 
         try (Reader reader = new InputStreamReader(is);
@@ -136,23 +137,31 @@ public class DataDrivenTestGenerator {
                 result.add(rowMap);
                 logger.debug("Row {} parsed: {}", i, rowMap);
             }
+        } catch (IOException | CsvException e) {
+            // WRAP THE STANDARD EXCEPTIONS IN YOUR CUSTOM EXCEPTION
+            throw DataLoadException.parseError("stream", "CSV", e);
         }
 
         logger.info("Parsed {} rows from CSV successfully", result.size());
         return result;
     }
 
-    private List<Map<String, String>> loadJsonFromStream(InputStream is) throws IOException {
+    private List<Map<String, String>> loadJsonFromStream(InputStream is) {
         logger.info("Loading JSON from stream");
 
-        List<Map<String, String>> result = objectMapper.readValue(is, new TypeReference<>() {});
+        try {
+            List<Map<String, String>> result = objectMapper.readValue(is, new TypeReference<>() {});
 
-        logger.info("Parsed {} rows from JSON", result.size());
+            logger.info("Parsed {} rows from JSON", result.size());
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Parsed JSON content: {}", result);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Parsed JSON content: {}", result);
+            }
+
+            return result;
+        } catch (IOException e) {
+            // WRAP THE STANDARD EXCEPTION IN YOUR CUSTOM EXCEPTION
+            throw DataLoadException.parseError("stream", "JSON", e);
         }
-
-        return result;
     }
 }

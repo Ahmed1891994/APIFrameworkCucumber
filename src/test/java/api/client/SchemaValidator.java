@@ -51,13 +51,11 @@ public class SchemaValidator {
         Set<ValidationMessage> errors = schema.validate(jsonNode);
         if (!errors.isEmpty()) {
             logger.warn("Schema validation failed for {} with {} errors", schemaName, errors.size());
-
-            StringBuilder errorMessage = new StringBuilder("Schema validation failed:\n");
             for (ValidationMessage error : errors) {
-                errorMessage.append(error.getMessage()).append("\n");
                 logger.warn("Validation error: {}", error.getMessage());
             }
-            throw new SchemaException(errorMessage.toString());
+
+            throw SchemaException.validationFailed(schemaName, errors);
         }
 
         logger.info("Schema validation successful for: {}", schemaName);
@@ -71,7 +69,7 @@ public class SchemaValidator {
                 if (schemaStream == null) {
                     String errorMsg = "Schema not found in classpath: " + path;
                     logger.error(errorMsg);
-                    throw new SchemaException(errorMsg);
+                    throw SchemaException.schemaNotFound(path);
                 }
 
                 JsonNode schemaNode = objectMapper.readTree(schemaStream);
@@ -81,7 +79,7 @@ public class SchemaValidator {
             } catch (IOException e) {
                 String errorMsg = "Failed to load schema from classpath: " + path;
                 logger.error(errorMsg, e);
-                throw new SchemaException(errorMsg, e);
+                throw SchemaException.invalidSchema(path, e);
             }
         });
     }

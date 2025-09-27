@@ -130,17 +130,4 @@ public class JsonCreatorHelper {
             logger.error("Failed to add body parameter for key {}: {}", key, ex.getMessage(), ex);
         }
     }
-
-    public static void removeKeys(ObjectNode target, List<String> keys) {
-        if (keys == null || keys.isEmpty()) return;
-
-        keys.forEach(key -> {
-            if (target.has(key)) {
-                target.remove(key);
-                logger.info("Removed key from body: {}", key);
-            } else {
-                logger.warn("Tried to remove non-existent key: {}", key);
-            }
-        });
-    }
 }

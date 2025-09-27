@@ -4,7 +4,6 @@ import api.client.AsyncRestClient;
 import api.client.SchemaValidator;
 import api.config.Configuration;
 import api.data.DataDrivenTestGenerator;
-import api.auth.AuthManager;
 import api.performance.PerformanceMonitor;
 
 public class TestContext {
@@ -14,10 +13,10 @@ public class TestContext {
     private final PathExtractor pathExtractor;
     private final RegexGenerator regexGenerator;
     private final DataDrivenTestGenerator dataDrivenTestGenerator;
-    private final AuthManager authManager;
     private final PerformanceMonitor performanceMonitor;
     private final OutputFileHelper outputFileHelper;
     private final RequestDataStore requestDataStore;
+    private final UrlBuilder urlBuilder;
 
     public TestContext(String environment) {
         this.configuration = new Configuration(environment);
@@ -27,8 +26,8 @@ public class TestContext {
         this.pathExtractor = new PathExtractor();
         this.regexGenerator = new RegexGenerator();
         this.dataDrivenTestGenerator = new DataDrivenTestGenerator();
-        this.authManager = new AuthManager();
-        this.requestDataStore = new RequestDataStore(this.configuration);
+        this.requestDataStore = new RequestDataStore();
+        this.urlBuilder = new UrlBuilder(this.requestDataStore,this.configuration);
         this.outputFileHelper = new OutputFileHelper(this.requestDataStore);
     }
 
@@ -39,10 +38,10 @@ public class TestContext {
     public PathExtractor getPathExtractor() { return pathExtractor; }
     public RegexGenerator getRegexGenerator() { return regexGenerator; }
     public DataDrivenTestGenerator getDataDrivenTestGenerator() { return dataDrivenTestGenerator; }
-    public AuthManager getAuthManager() { return authManager; }
     public PerformanceMonitor getPerformanceMonitor() { return performanceMonitor; }
     public OutputFileHelper getFileHelper() { return outputFileHelper; }
     public RequestDataStore getRequestData() { return requestDataStore; }
+    public UrlBuilder getUrlBuilder() { return urlBuilder; }
 
     public void reset() {
         this.requestDataStore.clearAll();

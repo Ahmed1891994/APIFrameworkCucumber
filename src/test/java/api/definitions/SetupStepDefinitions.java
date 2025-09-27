@@ -23,9 +23,4 @@ public class SetupStepDefinitions {
     public void setEndpoint(String path) {
         context.getRequestData().setEndpoint(path);
     }
-
-    @Given("apply authentication {string}")
-    public void applyAuthentication(String authType) {
-        context.getRequestData().setAuthType(authType);
-    }
 }

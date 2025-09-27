@@ -106,4 +106,54 @@ public class Configuration {
         }
         return Boolean.parseBoolean(value);
     }
+
+    public int getThreadCount() {
+        try {
+            String threadStr = properties.getProperty("parallel.threads", "1");
+            int threads = Integer.parseInt(threadStr);
+            if (threads < 1) {
+                throw ConfigurationException.invalidProperty("parallel.threads", threadStr,
+                        "Thread count must be at least 1");
+            }
+            return threads;
+        } catch (NumberFormatException e) {
+            String actualValue = properties.getProperty("parallel.threads");
+            throw ConfigurationException.invalidProperty("parallel.threads",
+                    actualValue != null ? actualValue : "null", "Must be a valid integer", e);
+        }
+    }
+
+    public String getParallelMode() {
+        String mode = properties.getProperty("parallel.mode", "scenarios");
+        if (!mode.equals("scenarios") && !mode.equals("features") && !mode.equals("methods")) {
+            throw ConfigurationException.invalidProperty("parallel.mode", mode,
+                    "Must be 'scenarios', 'features', or 'methods'");
+        }
+        return mode;
+    }
+
+    public boolean isParallelEnabled() {
+        String value = properties.getProperty("parallel.enabled", "false");
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw ConfigurationException.invalidProperty("parallel.enabled", value,
+                    "Must be 'true' or 'false'");
+        }
+        return Boolean.parseBoolean(value);
+    }
+
+    public int getDataProviderThreadCount() {
+        try {
+            String threadStr = properties.getProperty("dataprovider.threads", "10");
+            int threads = Integer.parseInt(threadStr);
+            if (threads < 1) {
+                throw ConfigurationException.invalidProperty("dataprovider.threads", threadStr,
+                        "DataProvider thread count must be at least 1");
+            }
+            return threads;
+        } catch (NumberFormatException e) {
+            String actualValue = properties.getProperty("dataprovider.threads");
+            throw ConfigurationException.invalidProperty("dataprovider.threads",
+                    actualValue != null ? actualValue : "null", "Must be a valid integer", e);
+        }
+    }
 }

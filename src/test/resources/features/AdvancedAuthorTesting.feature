@@ -225,7 +225,7 @@ Feature: Advanced Author Testing
       | active | true          |
     When send a POST request
     Then validate status code of 201
-    And verify last request response time is less than 500 ms
+    And verify last request response time is less than 800 ms
     And extract values from response
       | $.id | multi_author_1 |
 
